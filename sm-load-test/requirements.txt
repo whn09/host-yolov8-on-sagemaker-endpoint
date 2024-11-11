@@ -1,0 +1,6 @@
+locust
+pandas
+opencv-python
+pillow
+sagemaker
+numpy
