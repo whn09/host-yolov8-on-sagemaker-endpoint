@@ -14,6 +14,7 @@ def model_fn(model_dir):
     return model
 
 def input_fn(request_body, request_content_type):
+    start = time.time()
     print("Executing input_fn from inference.py ...")
     print('request_content_type:', request_content_type)
     if request_content_type == 'text/csv':
@@ -47,16 +48,22 @@ def input_fn(request_body, request_content_type):
             img_tensor = process_single_image(jpg_original)
             images.append(img_tensor)
 
-        batch_tensor = torch.stack(images).to(device)  # BCHW format with RGB channels float32 (0.0-1.0).
+        batch_tensor = torch.stack(images)  # .to(device)  # BCHW format with RGB channels float32 (0.0-1.0).
+        
+        end = time.time()
+        print('intput_fn time:', end-start)
         return batch_tensor
     else:
         raise Exception("Unsupported content type: " + request_content_type)
     return img
 
 def predict_fn(input_data, model):
+    start = time.time()
     print("Executing predict_fn from inference.py ...")
     with torch.no_grad():
         result = model(input_data)  # , verbose=False
+    end = time.time()
+    print('predict_fn time:', end-start)
     return result
 
 def output_fn(prediction_output, content_type):
@@ -92,8 +99,8 @@ if __name__ == '__main__':
     start = time.time()
     # input_data = input_fn(payload, 'text/csv')
     # input_data = input_fn(json.dumps({'image': payload}), 'application/json')
-    input_data = input_fn(json.dumps([{'image': payload} for i in range(50)]), 'application/json')
-    # input_data = input_fn(json.dumps([{'image': payload} for i in range(200)]), 'application/json')
+    batch_size = 50
+    input_data = input_fn(json.dumps([{'image': payload} for i in range(batch_size)]), 'application/json')
     end1 = time.time()
     print('intput_fn time:', end1-start)
 
@@ -103,13 +110,13 @@ if __name__ == '__main__':
     print('predict_fn time:', end2-end1)
 
     output = output_fn(result, 'application/json')
-    print(output)
+    # print(output)
     end = time.time()
     print('output_fn time:', end-end2)
     print('time:', end-start)
     
-    # for i in range(10):
-    #     start = time.time()
-    #     result = predict_fn(input_data, model)
-    #     end = time.time()
-    #     print('predict_fn time:', end-start)
+    for i in range(10):
+        start = time.time()
+        result = predict_fn(input_data, model)
+        end = time.time()
+        print('predict_fn time:', end-start)
